@@ -1,0 +1,16 @@
+.badge{display:inline-block;padding:1px 7px;font:10px var(--font-ui);border:1px solid var(--line-strong);white-space:nowrap}
+.badge-待领取{color:var(--warn);border-color:var(--warn)}
+.badge-已领取{color:var(--ok);border-color:var(--ok)}
+.badge-已撤回{color:var(--info);border-color:var(--info)}
+.badge-已到期{color:var(--bad);border-color:var(--bad)}
+.order-row{cursor:pointer}
+.order-row.selected{background:var(--surface-2);outline:2px solid var(--accent);outline-offset:-2px}
+.lot-frozen td{color:var(--ink-muted)}
+.lot-frozen td b{color:var(--ink-muted)}
+.actions-bar{border-top:1px solid var(--line);padding:10px}
+.action-group{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.action-group small{color:var(--ink-muted);font:10px var(--font-num)}
+.cells.tall{max-height:340px}
+.reason-cell{text-align:left!important;white-space:normal!important;min-width:180px}
+button.ghost{background:var(--surface);color:var(--ink);border-color:var(--line-strong)}
+#f-transfer,#f-sender,#f-recipient,#f-amount,#a-transfer,#a-actor{max-width:150px}

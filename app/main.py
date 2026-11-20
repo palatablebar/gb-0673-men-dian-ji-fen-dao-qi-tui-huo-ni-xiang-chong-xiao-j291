@@ -50,3 +50,6 @@ def export(run_id:str):
     return Response(serialize(result),media_type='application/zip',headers={'Content-Disposition':f'attachment; filename="{run_id}.zip"'})
 for key in MODULES:
     app.include_router(import_module(f'app.modules.{key}.handler').router)
+# M8 积分转赠为有状态事件账本，独立于离线重算管线，单独挂载。
+from app.modules.transfer.handler import router as transfer_router
+app.include_router(transfer_router)

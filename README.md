@@ -4,6 +4,8 @@
 
 七个业务模块：事件采信、权益规则、积分归批、消费到期、退货回拨、余额对账、期末归档。
 
+转赠模块（M8，入口 `/transfer`）在七模块离线重算之外提供有状态积分转赠账本，裁决为**提交即托管、领取才划转**：提交时积分按 FEFO 冻结、双方均不可用（一份积分始终只有一个可用主人），接收方领取后按原批次到期日入账立即可消费，待领取期间转出方可撤回且原路退回、到期承诺不变；托管过原到期日则阻断领取并核销，不复活。事件只追加并带哈希链，`transfer_id` 幂等重试不新增额度，链尾乐观锁冲突返回 409 且保留旧版余额，历史覆盖在验链时即失败。API：`POST /api/transfer/open|claim|revoke|sweep`、`GET /api/transfer/dashboard`、`GET /api/transfer/orders/{id}`。本模块不含账户合并、历史归属调整与营销权益。
+
 ```sh
 docker compose up --build -d
 docker compose exec -T app pytest -q

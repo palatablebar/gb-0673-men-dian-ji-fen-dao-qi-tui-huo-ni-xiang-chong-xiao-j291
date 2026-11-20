@@ -1,0 +1,150 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>积分转赠 · 积分批次账</title>
+<link href="/static/theme.css" rel="stylesheet">
+<link href="/static/layout.css" rel="stylesheet">
+<link href="/static/components.css" rel="stylesheet">
+<link href="/static/transfer.css" rel="stylesheet">
+<script src="/static/transfer.js" defer></script>
+</head>
+<body>
+<div class="app">
+  <aside class="rail">
+    <div class="brand">积分批次账<span>POINTS / LEDGER</span></div>
+    <nav>
+      <a href="/intake"><i>1</i>事件采信</a>
+      <a href="/policy"><i>2</i>权益规则</a>
+      <a href="/lots"><i>3</i>积分归批</a>
+      <a href="/consumption"><i>4</i>消费到期</a>
+      <a href="/refund"><i>5</i>退货回拨</a>
+      <a href="/reconcile"><i>6</i>余额对账</a>
+      <a href="/archive"><i>7</i>期末归档</a>
+      <a href="/transfer" class="on"><i>8</i>积分转赠</a>
+    </nav>
+    <div class="rail-bottom">规则版本<br>{{ dash.rule_version }}<br>Asia/Shanghai</div>
+  </aside>
+  <div class="work">
+    <header class="topbar">
+      <b>积分转赠（提交即托管 · 领取才划转）</b>
+      <span class="file-name">transfer-ledger / 事件 {{ dash.event_count }}</span>
+      <button id="refresh">刷新</button>
+    </header>
+    <main class="content">
+      <div class="kpis">
+        <div class="kpi">账户数<strong id="kpi-members">{{ dash.balances|length }}</strong></div>
+        <div class="kpi">待领取<strong id="kpi-pending">{{ dash.orders|selectattr('status','equalto','待领取')|list|length }}</strong></div>
+        <div class="kpi">已领取<strong id="kpi-claimed">{{ dash.orders|selectattr('status','equalto','已领取')|list|length }}</strong></div>
+        <div class="kpi">已撤回<strong id="kpi-revoked">{{ dash.orders|selectattr('status','equalto','已撤回')|list|length }}</strong></div>
+        <div class="kpi">已到期<strong id="kpi-expired">{{ dash.orders|selectattr('status','equalto','已到期')|list|length }}</strong></div>
+      </div>
+
+      <div class="formula-bar">
+        <span>fx</span>
+        <input id="f-transfer" placeholder="转赠单号（幂等键，如 T20261120001）">
+        <input id="f-sender" placeholder="转出方会员号">
+        <input id="f-recipient" placeholder="接收方会员号">
+        <input id="f-amount" placeholder="转赠积分" inputmode="numeric">
+        <button id="btn-open">提交转赠</button>
+        <button id="btn-sweep" class="ghost">到期清扫</button>
+        <output id="result" aria-live="polite"></output>
+      </div>
+
+      <div class="grid">
+        <section class="panel primary-panel">
+          <div class="panel__head"><h2>转赠单状态与阻断原因</h2><span>{{ dash.orders|length }} 单</span></div>
+          <div class="cells">
+            <table>
+              <thead><tr>
+                <th class="row-number">#</th><th>转赠单号</th><th>转出方</th><th>接收方</th>
+                <th>积分</th><th>状态</th><th>版本</th><th>阻断原因码</th><th>阻断说明</th><th>更新时刻</th>
+              </tr></thead>
+              <tbody id="orders-body">
+              {% for o in dash.orders %}
+                <tr class="order-row" data-id="{{ o.transfer_id }}" data-sender="{{ o.sender }}" data-recipient="{{ o.recipient }}" data-status="{{ o.status }}">
+                  <td class="row-number">{{ loop.index }}</td>
+                  <td tabindex="0">{{ o.transfer_id }}</td>
+                  <td>{{ o.sender }}</td>
+                  <td>{{ o.recipient }}</td>
+                  <td>{{ o.amount }}</td>
+                  <td><span class="badge badge-{{ o.status }}">{{ o.status }}</span></td>
+                  <td>v{{ o.version }}</td>
+                  <td>{{ o.block_code or '—' }}</td>
+                  <td class="reason-cell">{{ o.block_detail or '—' }}</td>
+                  <td>{{ o.updated_at }}</td>
+                </tr>
+              {% else %}
+                <tr><td colspan="10">暂无转赠单，提交第一笔转赠。</td></tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          <div class="actions-bar">
+            <div class="action-group">
+              <small>对选中单操作（仅待领取）</small>
+              <input id="a-transfer" placeholder="转赠单号" readonly>
+              <input id="a-actor" placeholder="操作会员号">
+              <button id="btn-claim">接收方领取</button>
+              <button id="btn-revoke" class="ghost">转出方撤回</button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel">
+          <div class="panel__head"><h2>双方可用额（当前）</h2><span>{{ dash.balances|length }} 户</span></div>
+          <div class="cells">
+            <table>
+              <thead><tr><th class="row-number">#</th><th>会员号</th><th>可用积分</th><th>持有批次数</th></tr></thead>
+              <tbody id="balances-body">
+              {% for b in dash.balances %}
+                <tr><td class="row-number">{{ loop.index }}</td><td>{{ b.member }}</td><td><b>{{ b.available }}</b></td><td>{{ b.lot_count }}</td></tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+
+      <div class="grid">
+        <section class="panel">
+          <div class="panel__head"><h2>批次与原到期依据</h2><span>{{ dash.lots|length }} 批</span></div>
+          <div class="cells tall">
+            <table>
+              <thead><tr><th class="row-number">#</th><th>批次号</th><th>会员</th><th>发放</th><th>可用</th><th>原到期日(UTC)</th><th>来源批次</th></tr></thead>
+              <tbody id="lots-body">
+              {% for lot in dash.lots %}
+                <tr class="{% if lot.available == 0 %}lot-frozen{% endif %}">
+                  <td class="row-number">{{ loop.index }}</td><td>{{ lot.lot_id }}</td><td>{{ lot.member }}</td>
+                  <td>{{ lot.issued }}</td><td>{{ lot.available }}</td><td>{{ lot.expires }}</td><td>{{ lot.source_lot }}</td>
+                </tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+        <section class="panel">
+          <div class="panel__head"><h2>阻断原因码字典</h2><span>{{ reasons|length }} 项</span></div>
+          <div class="cells tall">
+            <table>
+              <thead><tr><th class="row-number">#</th><th>原因码</th><th>说明</th></tr></thead>
+              <tbody>
+              {% for code, detail in reasons.items() %}
+                <tr><td class="row-number">{{ loop.index }}</td><td>{{ code }}</td><td class="reason-cell">{{ detail }}</td></tr>
+              {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </section>
+      </div>
+    </main>
+    <footer class="statusbar">
+      <span id="selection">一份积分始终只有一个可用主人 · 托管中双方均不可用</span>
+      <span>{{ dash.rule_version }} / 事件链尾 {{ dash.last_hash[:12] }}…</span>
+      <a href="/api/transfer/dashboard">JSON</a>
+    </footer>
+  </div>
+</div>
+</body>
+</html>
